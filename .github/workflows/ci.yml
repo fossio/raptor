@@ -1,0 +1,253 @@
+# CI — runs on every push and pull request targeting main.
+#
+# Jobs:
+#   changes  — path-filter gate: decides whether Rust files changed
+#   fmt      — cargo fmt --check (whole workspace)
+#   clippy   — cargo clippy -D warnings (whole workspace)
+#   deny     — cargo deny check (requires deny.toml at repo root)
+#   test     — cargo nextest run (whole workspace)
+#   build    — compile-only matrix: native + wasm32-unknown-unknown, ubuntu-only
+#              (raptor-domain/parse/analytics/wasm are pure Rust with no
+#              platform-specific bindings, so a multi-OS matrix buys nothing
+#              yet — revisit if that changes)
+#
+# Path-aware gating
+# -----------------
+# The Rust jobs (fmt/clippy/deny/test/build) are the expensive part of CI and
+# are pointless when a PR only touches docs or other non-Rust files. To avoid
+# wasting runner minutes we detect whether any Rust-relevant path changed and
+# skip the expensive STEPS when it did not.
+#
+# IMPORTANT — why we gate steps and NOT the jobs themselves:
+#   fmt/clippy/deny/test/build are configured as REQUIRED status checks in
+#   branch protection. If we skipped a required job with a job-level `if:`,
+#   GitHub reports that check as "skipped" — and a required check that never
+#   reports success leaves the PR's merge button blocked forever ("Expected —
+#   Waiting for status to be reported"). To keep the contract intact, every
+#   Rust job ALWAYS runs and ALWAYS completes successfully; only its expensive
+#   inner steps are guarded by `if: needs.changes.outputs.rust == 'true'`.
+#   When Rust is untouched the job is a near-instant no-op that reports green,
+#   so required checks are satisfied without doing real work.
+#
+# SHA pins should be kept current; enable Dependabot for automatic updates.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Change detection — outputs `rust=true` when the push/PR touches anything
+  # that could affect Rust build, lint, licence or test results.
+  # ──────────────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            rust:
+              - '**/*.rs'
+              - '**/Cargo.toml'
+              - '**/Cargo.lock'
+              - '.cargo/**'
+              - 'rust-toolchain'
+              - 'rust-toolchain.toml'
+              - '.config/**'
+              - 'deny.toml'
+              - '.github/workflows/**'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Format check.
+  # ──────────────────────────────────────────────────────────────────────────
+  fmt:
+    name: Rustfmt
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable + rustfmt
+        if: needs.changes.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Check workspace formatting
+        if: needs.changes.outputs.rust == 'true'
+        run: cargo fmt --all --check
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Clippy — pure Rust workspace, no system headers required.
+  # ──────────────────────────────────────────────────────────────────────────
+  clippy:
+    name: Clippy
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable + clippy
+        if: needs.changes.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache Cargo registry and build artefacts
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-clippy-
+
+      - name: Run Clippy — deny all warnings
+        if: needs.changes.outputs.rust == 'true'
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Cargo Deny — validates licences, bans, advisories, and allowed sources
+  # as defined in deny.toml at the repository root.
+  # ──────────────────────────────────────────────────────────────────────────
+  deny:
+    name: Cargo Deny
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable
+        if: needs.changes.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-deny
+        if: needs.changes.outputs.rust == 'true'
+        run: cargo install cargo-deny --locked
+
+      - name: Run cargo deny check
+        if: needs.changes.outputs.rust == 'true'
+        run: cargo deny check
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Tests — cargo nextest for structured output.
+  # ──────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test Suite
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable
+        if: needs.changes.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+
+      - name: Cache Cargo registry and build artefacts
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-
+
+      - name: Install cargo-nextest
+        if: needs.changes.outputs.rust == 'true'
+        run: |
+          curl -LsSf https://get.nexte.st/latest/linux \
+            | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+
+      - name: Run test suite
+        if: needs.changes.outputs.rust == 'true'
+        run: cargo nextest run --workspace --locked
+
+      # nextest does not run doctests; cargo test --doc covers those.
+      - name: Run doctests
+        if: needs.changes.outputs.rust == 'true'
+        run: cargo test --doc --workspace --locked
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Compile check — native build + wasm32-unknown-unknown, ubuntu-only.
+  # No platform-specific bindings exist in this workspace, so a multi-OS
+  # matrix has no technical justification yet (unlike e.g. GTK4 projects).
+  # ──────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.name }}
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: native
+          - name: wasm32
+            rust_target: wasm32-unknown-unknown
+
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable
+        if: needs.changes.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.rust_target }}
+
+      - name: Cache Cargo registry and build artefacts
+        if: needs.changes.outputs.rust == 'true'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-build-${{ matrix.name }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-${{ matrix.name }}-
+
+      - name: Build workspace (compile check only)
+        if: needs.changes.outputs.rust == 'true'
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.rust_target }}" ]; then
+            cargo build --workspace --locked --target ${{ matrix.rust_target }}
+          else
+            cargo build --workspace --locked
+          fi

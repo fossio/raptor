@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/domain", "crates/parse", "crates/analytics", "crates/wasm"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/fossio/raptor"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

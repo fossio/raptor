@@ -1,0 +1,71 @@
+# Security — proactive vulnerability scanning.
+#
+# Runs on a weekly schedule and on every push to main so that newly disclosed
+# advisories are caught between dependency bumps as well as when they land.
+#
+# Jobs:
+#   audit            — cargo audit against the RustSec advisory database
+#   deny-advisories  — cargo deny check advisories (superset of cargo audit:
+#                      also catches unmaintained and yanked crates)
+#
+# SHA pins should be kept current; enable Dependabot for automatic updates.
+
+name: Security
+
+on:
+  schedule:
+    # Every Monday at 08:00 UTC
+    - cron: "0 8 * * 1"
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # cargo audit — fetches the RustSec advisory database and cross-checks
+  # every crate in Cargo.lock for known vulnerabilities.
+  # ──────────────────────────────────────────────────────────────────────────
+  audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # cargo deny (advisories only) — richer advisory coverage than cargo audit:
+  # vulnerability advisories, unmaintained crates, and yanked versions, all
+  # driven by the deny.toml configuration at the repo root.
+  # ──────────────────────────────────────────────────────────────────────────
+  deny-advisories:
+    name: Cargo Deny (advisories)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      # Only the `advisories` section is checked here; the full `deny check`
+      # (licences, bans, sources) is covered in ci.yml.
+      - name: Run cargo deny check advisories
+        run: cargo deny check advisories
