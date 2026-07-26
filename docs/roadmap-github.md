@@ -22,7 +22,11 @@ Convenção `prefixo:valor`, sem as labels default do GitHub (removidas ao criar
 | `effort:` | `xs`, `s`, `m`, `l`, `xl` | Estimativa de esforço relativo, não prazo — `xl` é sinal de que a issue provavelmente devia virar duas |
 | `needs:` | `decision`, `research`, `design` | Marca bloqueio explícito: issue não começa até a label ser removida (decisão tomada, pesquisa concluída, ou design definido) |
 
-*Correção desta rodada (§8, Bloco 1 de `alinhamento-issues.md`):* a definição de `type:epic` mudou de "só no issue-guarda-chuva de cada milestone" para o texto acima, para bater com o uso real de `#17` e `#29`. **Ação manual pendente:** a descrição da label no GitHub ainda não foi atualizada — nenhuma ferramenta disponível na rodada de alinhamento edita descrição de label via API. Atualizar manualmente para casar com o texto acima.
+*Correção desta rodada (§8, Bloco 1 de `alinhamento-issues.md`):* a definição de `type:epic` mudou de "só no issue-guarda-chuva de cada milestone" para o texto acima, para bater com o uso real de `#17` e `#29`. A tabela traz a versão completa; a label do GitHub tem limite de 100 caracteres na descrição, então a forma real a aplicar lá é a curta abaixo (97 caracteres):
+
+> Guarda-chuva que agrupa outras issues (milestone ou bloco coeso); decompor ao iniciar o milestone
+
+**Ação manual:** `gh label edit "type:epic" --repo fossio/raptor --description "Guarda-chuva que agrupa outras issues (milestone ou bloco coeso); decompor ao iniciar o milestone"` — nenhuma ferramenta desta sessão edita descrição de label via API.
 
 Aplicação manual pela UI enquanto for só o mantenedor (ADR-12) — sync automatizado fica para se/quando o volume justificar.
 
