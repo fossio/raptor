@@ -35,11 +35,12 @@ relabelar as 35 issues e recriar 8 milestones; os valores que faltariam incorpor
 Alternativa avaliada: milestone próprio — recusada, porque separá-lo do SGML cria um milestone
 que entrega meio parser, e os dois compartilham corpus, fuzzing e canal de reporte.
 
-*Atenção, porque isto contraria um documento vivo:* o §10 do Discovery dá a **Fase 0** como dona
-única do parser XML 2.x — "o caminho fácil antes do difícil", achado `#73`. Não é contradição de
+*Atenção, porque isto contraria um documento vivo:* o §10 do Discovery dava a **Fase 0** como dona
+única do parser XML 2.x — "o caminho fácil antes do difícil", achado `#73`. Não era contradição de
 fato (a R5/R7 trocou o roadmap horizontal por fatia vertical, e o M1 constrói o parser da família
-que o spike `#4` confirmar), mas os dois documentos ficam escritos de formas incompatíveis. O §10
-do Discovery precisa ser atualizado junto — ver §8, Bloco 5.
+que o spike `#4` confirmar), mas os dois documentos ficavam escritos de formas incompatíveis.
+**Corrigido no Bloco 5** — o §10 agora marca a si mesmo como narrativa conceitual superada pela
+R5/R7, com as afirmações fáticas realinhadas ao tracker real.
 
 **1.3 — A issue `#16` perde o `needs:design`.** Ela está bloqueada esperando uma decisão
 (versionamento de schema, RA-11/25) que a própria RA adiou "até existir um consumidor real que
@@ -434,13 +435,14 @@ Alinha a definição ao uso real de `#17` e `#29`. Aplicar também ao `roadmap-g
 
 **Bloco 4 — horizonte.** Milestone de backlog + N14–N21.
 
-**Bloco 5 — sincronizar roadmap e Discovery.** Incorporar as alterações ao
-`docs/roadmap-github.md`, para que documento e tracker não voltem a divergir — é a causa raiz do
-§3.A: o roadmap foi corrigido num documento à parte (`plano-issues-github.md`) que ninguém aplicou
-nos dois lugares. E atualizar o **§10 do `discovery-ofx-rust-wasm.md`** junto: hoje ele dá a Fase
-0 como dona do parser XML 2.x (premissa 1.2) e nomeia os entregáveis de ADR-10/ADR-11 por fase que
-o roadmap não carrega (§6). Enquanto os dois discordarem, cada leitura de um deles reabre trabalho
-que o outro já resolveu.
+**Bloco 5 — sincronizar roadmap e Discovery.** ✔ *Aplicado.* `docs/roadmap-github.md` reescrito:
+issues referenciadas pelo número real do GitHub (não mais o esquema `#M.N`), corpo completo
+deixou de ser duplicado no documento (só título/labels/origem — o GitHub é a fonte do corpo, o
+que evita a divergência que causou o §3.A), taxonomia do §1 com a definição corrigida de
+`type:epic`, milestone de backlog documentado com sua descrição pronta. `docs/discovery-ofx-rust-wasm.md`
+§10 marcado como narrativa conceitual superada pela R5+R7 (não mais cronograma de execução), com
+a contradição do parser XML 2.x corrigida e os entregáveis de ADR-10/ADR-11 realinhados aos
+Milestones reais onde cada issue vive.
 
 ---
 
