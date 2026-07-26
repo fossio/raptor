@@ -97,7 +97,13 @@ modelo não tem issue. M0 está "em andamento" com três issues sobre
 
 **C. Rastreabilidade quebrada.** Toda issue cita achados numerados (`achado #76`, `A#22`,
 `RA-11/25`) de documentos que não estavam versionados. A cadeia Discovery → auditoria → achado →
-issue existia nos arquivos do autor e sumia no repositório. *Corrigido neste commit* (§8, Bloco 0).
+issue existia nos arquivos do autor e sumia no repositório. *Corrigido neste commit para os
+achados que têm documento* (§8, Bloco 0) — **com uma exceção que o commit não pôde fechar:**
+`achado #26`–`#32` não resolve para documento nenhum, nem nos arquivos originais desta rodada.
+`meta-auditoria-III.md` cita "meta-auditoria II" como quem fechou essa faixa; esse documento nunca
+existiu entre os originais recebidos. Nenhuma issue cita achado nessa faixa hoje, então o buraco é
+inerte — mas fica registrado (`docs/README.md`) para não virar referência quebrada silenciosa se
+alguém citar `#26`–`#32` no futuro.
 
 **D. Deriva entre issue e realidade.** `#4` teve os marcadores de header XML engolidos na criação
 (sobraram dois pares de crases vazias no corpo, onde deviam estar a declaração XML e
@@ -160,7 +166,10 @@ Nada disso está no tracker, então cada pressão previsível será rediscutida 
 
 Os textos de substituição de `#7`, `#16`, `#17`, `#18`, `#20`, `#21`, `#22`, `#26`, `#29`,
 `#31`, `#32`, `#33`, `#34` estão prontos em `auditoria/plano-issues-github.md` (§2 a §5,
-"Como deve estar") e são copiados de lá sem reescrita. O que segue é o que **não** está lá.
+"Como deve estar") e são copiados de lá sem reescrita. O texto de `#9` está no mesmo documento,
+mas em §7 ("nota de decomposição para `effort:xl`"), fora dessa faixa — citado à parte porque é
+um adendo de uma linha, não um "como deve estar" completo. O que segue é o que **não** está em
+`plano-issues-github.md`.
 
 **`#2` — Medir `.wasm` do domain isolado.** Acrescentar ao final:
 > Precedência: esta medição só tem significado depois que o domínio real existir (N1/N2 do
