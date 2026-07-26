@@ -1,4 +1,4 @@
-# Evolução — Visão de longo prazo do projeto ofx
+# Evolução — Visão de longo prazo do projeto raptor
 
 | Campo | Valor |
 |---|---|
@@ -35,11 +35,11 @@ Benchmark **funcional**, por documentação pública em jul/2026. Performance/bi
 | **ofxgo** | Go | ✔ | ✔ | Amplo (não completo, por admissão do autor) | Média; foco em request+parse | ✔ (requests) | ✔ | Possível (tinygo), não é alvo | ✖ | Tipos próprios |
 | **goofx** | Go | ✔ (recupera tags faltantes) | ✔ | Básico | **É o produto**: existe para consertar arquivos que violam o spec | ✖ | ✖ | ✖ | ✖ | — |
 | **ofx-rs** (crate 2026) | Rust | ✔ | ✔ | Tipado, entry point único | Declarada ("previne bugs de dado financeiro em compile time"); puro, sem I/O, sem unsafe | ✖ | ✖ | Não é alvo declarado | ✖ | Tipada |
-| **ofx (este projeto)** | Rust | ✔ (planejado, Fase 1) | ✔ (planejado, Fase 0/1) | 5 Message Sets incl. Bill Pay e Taxes (ADR-04) | Diagnostics estruturados + corpus por dialeto + parsing parcial (ADR-08) | ✖ (candidato H3) | ✖ **por design** (ADR-09) | **✔ alvo primário** | **✔ — o diferencial** | `Decimal` + moeda obrigatória |
+| **raptor (este projeto)** | Rust | ✔ (planejado, Fase 1) | ✔ (planejado, Fase 0/1) | 5 Message Sets incl. Bill Pay e Taxes (ADR-04) | Diagnostics estruturados + corpus por dialeto + parsing parcial (ADR-08) | ✖ (candidato H3) | ✖ **por design** (ADR-09) | **✔ alvo primário** | **✔ — o diferencial** | `Decimal` + moeda obrigatória |
 
 ### Leitura do benchmark
 
-1. **A coluna "Analytics" é unânime em ✖.** É a evidência empírica da lacuna do §1 — parsing é onde todo o ecossistema para. O diferencial do ofx não é disputável nessa coluna hoje.
+1. **A coluna "Analytics" é unânime em ✖.** É a evidência empírica da lacuna do §1 — parsing é onde todo o ecossistema para. O diferencial do raptor não é disputável nessa coluna hoje.
 2. **A coluna WASM também.** Nenhuma trata browser como alvo primário; a combinação analytics+WASM+offline não tem ocupante.
 3. **O surgimento do crate `ofx-rs` (publicado ~mar/2026) muda o tabuleiro.** "Parser OFX tipado em Rust, puro, 1.x+2.x, sem I/O" deixou de ser diferencial — já existe. A consequência estratégica: o valor defensável do ofx é o **pacote** (parsing resiliente com diagnostics + analytics com proveniência + fronteira WASM + corpus de dialeto brasileiro), nunca o parser isolado. Isso reforça a priorização da ADR-13 (ledger/integrity antes de tudo) e sugere não gastar diferenciação em completude de parsing além do necessário.
 4. **ofxtools é a régua de completude.** Investment message set completo, produção de OFX, décadas de arquivos reais. Quando o ofx medir cobertura de modelo, é contra ofxtools que se mede — inclusive na decisão H3 de escrever OFX (round-trip), que ofxtools prova ser viável e útil.
@@ -70,9 +70,9 @@ O que os *consumidores* do formato constroem em cima dele — é o mapa do que u
 
 **A hierarquia de valor percebido é: categorizar → conciliar → recorrência → orçamento → projetar.** Categorização é a feature nº 1 de todo app brasileiro de finanças — é a primeira coisa que Mobills e Organizze pedem na tela de conciliação do OFX importado. O ofx hoje não tem nada nessa camada; `group_by_payee` é o embrião, não o órgão.
 
-**As visões da ADR-13 são retrovisor; o mercado maduro vende para-brisa.** Tudo que o ofx entrega hoje responde "o que aconteceu" (total, evolução, anomalias, saúde do arquivo). Firefly III e GnuCash respondem também "o que vem" (bills previstos, forecast, orçamento contra realizado). A metade preditiva do ofx (`BR`/`runway`) é o único habitante desse lado — e é exatamente o lado onde a persona leiga sente valor recorrente (voltar toda semana, não só no dia que importa a pilha).
+**As visões da ADR-13 são retrovisor; o mercado maduro vende para-brisa.** Tudo que o raptor entrega hoje responde "o que aconteceu" (total, evolução, anomalias, saúde do arquivo). Firefly III e GnuCash respondem também "o que vem" (bills previstos, forecast, orçamento contra realizado). A metade preditiva do raptor (`BR`/`runway`) é o único habitante desse lado — e é exatamente o lado onde a persona leiga sente valor recorrente (voltar toda semana, não só no dia que importa a pilha).
 
-**As restrições do Mobills são um mapa de dores não resolvidas** — e cada uma é uma oportunidade direta do ofx: arquivo misto banco+cartão rejeitado (o ofx aceita — multi-conta é lista plana da ADR-04); janela de 6 meses (o ofx não tem limite — consolidação histórica é o caso de uso central); sinal sem `-` quebra o import (é literalmente o achado #72 — normalização com diagnostic); parcelas não importáveis (achado #76). O corpus de dialeto brasileiro do ofx pode nascer dessas dores documentadas publicamente.
+**As restrições do Mobills são um mapa de dores não resolvidas** — e cada uma é uma oportunidade direta do raptor: arquivo misto banco+cartão rejeitado (o raptor aceita — multi-conta é lista plana da ADR-04); janela de 6 meses (o raptor não tem limite — consolidação histórica é o caso de uso central); sinal sem `-` quebra o import (é literalmente o achado #72 — normalização com diagnostic); parcelas não importáveis (achado #76). O corpus de dialeto brasileiro do raptor pode nascer dessas dores documentadas publicamente.
 
 ---
 
@@ -95,7 +95,7 @@ Cada item: o que é, racional, pré-requisito e a invariante que preserva. Regra
 1. **Motor de categorização por regras** (`rules`, módulo novo). Regras declarativas do usuário (payee normalizado contém X, valor entre A e B, `TRNTYPE` = Y → categoria Z), avaliadas como função pura sobre a série; o *conjunto de regras* é dado do consumidor (JSON via fronteira), a *avaliação* é da lib. Racional: é a capacidade nº 1 do §3, e regras — não ML — preservam determinismo (§3 do Discovery) e proveniência ("categorizado pela regra R" é auditável; "o modelo achou" não é). Firefly III prova que motor de regras com condições compostas cobre a esmagadora maioria dos casos reais.
 2. **Detecção de transferência entre contas próprias.** Par débito/crédito de mesmo valor, datas próximas, contas distintas do mesmo `Portfolio` → marcado como transferência interna, excluído de "gasto" no consolidado. Racional: sem isso, o escopo consolidado da ADR-13 conta o pagamento da fatura duas vezes (saída na conta + entrada no cartão) — é a extensão natural do achado #52 para multi-conta, e toda ferramenta do §3 tem.
 3. **Detecção de recorrência** (`recurrence`, família de `analytics`). Payee normalizado + valor estável (tolerância) + cadência regular (mensal/semanal) → assinaturas e contas fixas identificadas estatisticamente, com confiança na proveniência. Racional: pré-requisito de todo o H2; puramente estatístico, zero ML, cabe no padrão `Metric`/`Provenance` existente.
-4. **Patrimônio em série temporal** (`networth`). Saldos reconstruídos (#69) + posições de investimento avaliadas → série de patrimônio. Racional: presente em todas as ferramentas maduras do §3; no ofx é composição de peças já planejadas (ledger + Investments do ADR-04).
+4. **Patrimônio em série temporal** (`networth`). Saldos reconstruídos (#69) + posições de investimento avaliadas → série de patrimônio. Racional: presente em todas as ferramentas maduras do §3; no raptor é composição de peças já planejadas (ledger + Investments do ADR-04).
 
 **Invariantes:** pureza (tudo é `fn(série, params)`), proveniência, `Money` com moeda (categorias somam por moeda, #51), storage sempre do consumidor (regras entram pela fronteira como parâmetro — nenhuma persistência na lib, coerente com Hexagonal §5).
 
@@ -103,7 +103,7 @@ Cada item: o que é, racional, pré-requisito e a invariante que preserva. Regra
 
 **Itens:**
 
-1. **Projeção de fluxo e de fatura.** Recorrências do H1 + parcelas em andamento (#76) → forecast da próxima fatura e do saldo em N dias, **como intervalo com premissas na proveniência**, nunca ponto seco. Racional: é a resposta local-first ao forecast do Firefly III; parcelamento dá ao ofx uma vantagem estrutural no caso brasileiro — parcelas futuras são o componente *determinístico* do forecast de fatura, e nenhuma ferramenta do §3 explora isso bem.
+1. **Projeção de fluxo e de fatura.** Recorrências do H1 + parcelas em andamento (#76) → forecast da próxima fatura e do saldo em N dias, **como intervalo com premissas na proveniência**, nunca ponto seco. Racional: é a resposta local-first ao forecast do Firefly III; parcelamento dá ao raptor uma vantagem estrutural no caso brasileiro — parcelas futuras são o componente *determinístico* do forecast de fatura, e nenhuma ferramenta do §3 explora isso bem.
 2. **Orçamento como avaliação.** O envelope (categoria → teto mensal) é dado do consumidor; a lib avalia realizado vs. teto, ritmo de consumo do envelope no mês e projeção de estouro (com a recorrência do H1). Racional: mesmo padrão da categorização — a lib nunca guarda o orçamento, só o avalia; é o que permite a Actual Budget-experience sem servidor.
 3. **Simulação.** "E se eu cortar a categoria X / quitar o parcelamento Y" → reprojeção do fluxo. Função pura sobre série + hipótese; a hipótese vai inteira pra proveniência.
 4. **Score de saúde financeira.** Composição de `integrity` (dado confiável?) + CU + BR/`runway` + estouro de orçamento num indicador para a persona leiga, com decomposição auditável (nunca número mágico).

@@ -88,7 +88,7 @@ Título e labels abaixo refletem o estado real no GitHub em 2026-07-26. **Corpo 
 | [`#42`](../../../issues/42) | `Transaction` com dois campos temporais (achado #66) | `type:task` `area:domain` `p0` `effort:s` | **novo** |
 | [`#43`](../../../issues/43) | `Transaction.installment` + janela declarada (achados #76/#80) | `type:task` `area:domain` `p1` `effort:s` | **novo** |
 | [`#44`](../../../issues/44) | Determinismo de serialização (achado #82) | `type:task` `area:domain` `p1` `effort:xs` | **novo** |
-| [`#45`](../../../issues/45) | Registrar a decisão de nomenclatura `ofx` vs. `raptor` | `type:spike` `area:repo` `p2` `effort:xs` `needs:decision` | **novo** |
+| [`#45`](../../../issues/45) | Registrar a decisão de nomenclatura `ofx` vs. `raptor` | `type:spike` `area:repo` `p2` `effort:xs` | **fechada** — decisão: `raptor` |
 | [`#46`](../../../issues/46) | `CLAUDE.md` inicial (ADR-11) | `type:task` `area:repo` `p1` `effort:s` | **novo** |
 
 ### Milestone 1 — Fatia vertical mínima: piloto Nubank

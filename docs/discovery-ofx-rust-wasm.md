@@ -4,7 +4,7 @@
 
 Biblioteca Rust multi-crate (`domain`/`parse`/`analytics`/`wasm`) para parsing de todas as versões do protocolo OFX (SGML 1.x + XML 2.x), com 20 métricas de analytics financeiro e compilação para WASM — o objetivo final é uma página HTML que processa extrato bancário inteiramente no navegador, sem upload para servidor.
 
-**Estado atual:** Discovery fechado — 13 ADRs + seção de Princípios de design (Hexagonal, DDD, SOLID, ROP/CQS — §5). Duas rodadas de auditoria (achados #1–25) totalmente fechadas: 7 em código real e testado, 18 como decisão vinculante para quando a crate correspondente existir. Duas rodadas de meta-auditoria estrutural do próprio documento (achados #26–40) e uma rodada de validação técnica (achados #41–47) já aplicadas. Terceira rodada — consistência pós-reversão de ADR-02/06, semântica de cálculo (dedupe, datas, grades de reamostragem) e realismo de dialeto/produto brasileiro (achados #48–85, três passadas) — aplicada nesta sessão; ver `analise-critica-adr.md`. Entrevista de fechamento resolveu as cinco decisões pendentes: #48 (`Diagnostic`/`DiagnosticCode` movem para `domain::diagnostic`), #51 (escopo consolidado particiona por moeda), #58 (licença trocada para MPL-2.0), #66 (mantido campo único de data em UTC — risco de deslocamento de mês em UTC−3 aceito conscientemente, não mitigado) e #76 (parcelamento modelado — campo `installment`, payee normalizado, visão dedicada). Nenhuma decisão de ADR segue pendente. `ofx-domain` é a única crate que existe: compila nativamente, 24 testes unitários + 5 doctests passam, `cargo clippy -- -D warnings` limpo.
+**Estado atual:** Discovery fechado — 13 ADRs + seção de Princípios de design (Hexagonal, DDD, SOLID, ROP/CQS — §5). Duas rodadas de auditoria (achados #1–25) totalmente fechadas: 7 em código real e testado, 18 como decisão vinculante para quando a crate correspondente existir. Duas rodadas de meta-auditoria estrutural do próprio documento (achados #26–40) e uma rodada de validação técnica (achados #41–47) já aplicadas. Terceira rodada — consistência pós-reversão de ADR-02/06, semântica de cálculo (dedupe, datas, grades de reamostragem) e realismo de dialeto/produto brasileiro (achados #48–85, três passadas) — aplicada nesta sessão; ver `analise-critica-adr.md`. Entrevista de fechamento resolveu as cinco decisões pendentes: #48 (`Diagnostic`/`DiagnosticCode` movem para `domain::diagnostic`), #51 (escopo consolidado particiona por moeda), #58 (licença trocada para MPL-2.0), #66 (mantido campo único de data em UTC — risco de deslocamento de mês em UTC−3 aceito conscientemente, não mitigado) e #76 (parcelamento modelado — campo `installment`, payee normalizado, visão dedicada). Nenhuma decisão de ADR segue pendente. `raptor-domain` é a única crate que existe: compila nativamente, 24 testes unitários + 5 doctests passam, `cargo clippy -- -D warnings` limpo.
 
 **Auditoria de solução (33 achados, ótica CPO+CTO) integralmente resolvida** — achados em `auditoria-solucao.md`, todas as resoluções em `resolucao-auditoria.md` (R1–R7 + RA-5 a RA-32). Decisões operacionais que mudam o roadmap e a arquitetura, e que não aparecem em nenhum outro parágrafo deste resumo: **Nubank é o banco-piloto** do primeiro corte vertical do roadmap (não BB/Bradesco, cogitados originalmente por terem dialeto mais simples); a fronteira WASM roda dentro de um **Web Worker** (segunda revisão da ADR-06 nesta sessão, além da reversão do handle residente); estrutura de **GitHub (milestones/labels/issues)** adotada e formalizada em `roadmap-github.md` — os Épicos do roadmap reestruturado (vertical por valor, não mais horizontal por camada) substituem as Fases como milestones (ADR-12 revisada); **telemetria de produto vetada por princípio, para sempre, sem exceção nem anônima** (ADR-09); **drill-down até a transação individual** garantido via `Provenance` (ADR-05); Open Finance **deprioritizado** do horizonte ativo, foco 100% OFX por ora; `k_d` (módulo `credit`) definido como **Custo Implícito da Dívida** (`k_d = Σ I_paid / B̄_debt`), confirmado contra o handoff técnico original das 20 operações.
 
@@ -12,7 +12,7 @@ Biblioteca Rust multi-crate (`domain`/`parse`/`analytics`/`wasm`) para parsing d
 
 **Decisões que mais mudam o resultado se ignoradas:** `Money` nunca soma entre moedas sem conversão explícita (achado #2); métricas de retorno (TWR/IRR/HPR/CAGR) consomem eventos de cashflow já classificados como capital externo ou performance, nunca `TRNAMT`/`BALAMT` bruto (achado #13 — o achado estrutural da segunda auditoria); `sgml`/`xml` são dois parsers independentes, cada um com mapeamento próprio pro domínio, sem AST neutro compartilhado (ADR-02, revertido nesta sessão); fronteira WASM não mantém handle residente — cada função de analytics recebe o documento serializado e desserializa internamente, sem `free()` nem gerência de ciclo de vida no JS — e roda dentro de um **Web Worker**, nunca na main thread (ADR-06, revertido e depois estendido nesta sessão — A#24 da auditoria de solução).
 
-**O que falta:** `parse`, `analytics` e `wasm` — Fase 0 em diante do roadmap (§10). Primeira ação executável do próximo agente: `rustup target add wasm32-unknown-unknown` seguido de `cargo build --target wasm32-unknown-unknown -p ofx-domain`. Este sandbox não tem toolchain completo para validar isso (achado #43), mas já confirmou que a árvore de dependências de `domain` está limpa para o alvo (achado #41).
+**O que falta:** `parse`, `analytics` e `wasm` — Fase 0 em diante do roadmap (§10). Primeira ação executável do próximo agente: `rustup target add wasm32-unknown-unknown` seguido de `cargo build --target wasm32-unknown-unknown -p raptor-domain`. Este sandbox não tem toolchain completo para validar isso (achado #43), mas já confirmou que a árvore de dependências de `domain` está limpa para o alvo (achado #41).
 
 ---
 
@@ -66,14 +66,14 @@ flowchart TB
         FILE["File API<br/>arrayBuffer()"]
     end
 
-    subgraph wasmcrate["ofx-wasm — alvo wasm32-unknown-unknown"]
+    subgraph wasmcrate["raptor-wasm — alvo wasm32-unknown-unknown"]
         BIND["wasm-bindgen<br/>funções livres, sem handle"]
     end
 
     subgraph core["core (Rust puro, sem I/O)"]
-        PARSE["ofx-parse<br/>header + sgml (próprio) + xml (próprio)"]
-        DOMAIN["ofx-domain<br/>Message Sets tipados + Money(Decimal, Currency)"]
-        ANALYTICS["ofx-analytics<br/>20 métricas (primárias puras + derivadas)"]
+        PARSE["raptor-parse<br/>header + sgml (próprio) + xml (próprio)"]
+        DOMAIN["raptor-domain<br/>Message Sets tipados + Money(Decimal, Currency)"]
+        ANALYTICS["raptor-analytics<br/>20 métricas (primárias puras + derivadas)"]
     end
 
     FILE -->|Uint8Array| BIND
@@ -93,20 +93,20 @@ Grafo de dependências entre crates (acíclico): `parse → domain`, `analytics 
 ### Layout do workspace
 
 ```
-ofx/
+raptor/
 ├── Cargo.toml                    # [workspace] + perfil release WASM
 ├── crates/
-│   ├── domain/                   # ofx-domain — núcleo estável (implementado, Fase −1)
+│   ├── domain/                   # raptor-domain — núcleo estável (implementado, Fase −1)
 │   │   └── src/{lib,money,metric,cashflow,predictive,dedupe,consolidation,diagnostic}.rs
 │   │       # cashflow/predictive/dedupe nascem aqui por serem baratos e
 │   │       # não terem crate `analytics` para morar ainda na Fase −1;
 │   │       # `analytics` pode reexportar ou promover cashflow/predictive
 │   │       # quando existir (Fase 3/4) — decisão adiada, não perdida.
-│   ├── parse/                    # ofx-parse
+│   ├── parse/                    # raptor-parse
 │   │   └── src/{lib,header}.rs + sgml/{tokenize,to_document}.rs + xml/{read,to_document}.rs
-│   ├── analytics/                # ofx-analytics
+│   ├── analytics/                # raptor-analytics
 │   │   └── src/{lib,ledger,credit,anomaly,returns,risk,trend,integrity}.rs
-│   └── wasm/                     # ofx-wasm — produz o .wasm
+│   └── wasm/                     # raptor-wasm — produz o .wasm
 │       └── src/lib.rs
 ├── web/                          # demo de validação
 │   └── {index.html,app.js,style.css}
@@ -121,7 +121,7 @@ As decisões abaixo (ADR-01 a ADR-12) já seguem os princípios desta seção na
 
 **Hexagonal (Ports & Adapters).** `wasm` é o Primary Adapter, `domain`/`parse`/`analytics` é o core, `&[u8]`/`serde-wasm-bindgen` é o contrato de borda (ADR-01, ADR-06) — hexagonal na estrutura desde o início, sem o vocabulário. A regra que isso torna explícita: **capacidade externa do core entra como trait (Secondary Port) injetada pela borda, nunca como chamada direta nem `#[cfg(target_arch)]` dentro do core.** Hoje o core não precisa de nenhum port porque recebe `&[u8]` já lido — mas a regra já vale para quando alguma capacidade de plataforma se tornar necessária (ex.: relógio, se `DY` precisar saber "quando é agora"; leitura de múltiplas fontes, se a consolidação do §11 precisar). **Deliberadamente não nomeio a forma exata dessas traits aqui** — fixar nome e assinatura de um port antes de a capacidade ser implementada ancora a Fase 0 numa abstração que pode não bater com a necessidade real; a regra é o princípio (injeção, não chamada direta), a forma nasce quando o código nascer. Esses Ports podem ser `async` na implementação de borda (I/O local via File API/`fetch`/`IndexedDB` é assíncrono no browser por natureza) sem o core se acoplar a nenhuma runtime — e sem assumir `Send + Sync` nas Futures, porque o executor WASM é single-thread (`spawn_local`); assumir `Send` seria a falsa expectativa de concorrência que a runtime da borda não tem.
 
-**DDD (Domain-Driven Design).** `Document` (ADR-04) é candidato a Aggregate Root — mas o rótulo é aspiracional, não conquistado: o que faz algo ser Aggregate Root de verdade em DDD não é o nome, é o **enforcement** (todo acesso/mutação passa pela raiz, nunca direto numa entidade filha). Isso ainda não está desenhado, porque `Transaction`/`Account` não existem em código (são Fase 0). Registro a intenção aqui — a invariante `saldo_inicial + Σ transações == saldo_final` (§8) só é invariante de agregado de fato se `Document` for a única porta de acesso — mas a Fase 0 precisa decidir se aceita esse enforcement (ex.: `Account`/`Transaction` sem construtor público fora de `Document`) ou se abre acesso direto por conveniência, caso em que o nome correto é só "objeto raiz", sem a garantia que "Aggregate Root" promete em DDD. A classificação de cashflow (achado #13, `ofx-domain::cashflow`) é um Domain Service: conhecimento de negócio sobre o significado de um lançamento, não cálculo estatístico — por isso mora no domínio, não em `analytics`. Nomenclatura vem do Ubiquitous Language do próprio spec OFX (`TRNAMT`, `INVPOS`, Message Set), não de sinônimos inventados.
+**DDD (Domain-Driven Design).** `Document` (ADR-04) é candidato a Aggregate Root — mas o rótulo é aspiracional, não conquistado: o que faz algo ser Aggregate Root de verdade em DDD não é o nome, é o **enforcement** (todo acesso/mutação passa pela raiz, nunca direto numa entidade filha). Isso ainda não está desenhado, porque `Transaction`/`Account` não existem em código (são Fase 0). Registro a intenção aqui — a invariante `saldo_inicial + Σ transações == saldo_final` (§8) só é invariante de agregado de fato se `Document` for a única porta de acesso — mas a Fase 0 precisa decidir se aceita esse enforcement (ex.: `Account`/`Transaction` sem construtor público fora de `Document`) ou se abre acesso direto por conveniência, caso em que o nome correto é só "objeto raiz", sem a garantia que "Aggregate Root" promete em DDD. A classificação de cashflow (achado #13, `raptor-domain::cashflow`) é um Domain Service: conhecimento de negócio sobre o significado de um lançamento, não cálculo estatístico — por isso mora no domínio, não em `analytics`. Nomenclatura vem do Ubiquitous Language do próprio spec OFX (`TRNAMT`, `INVPOS`, Message Set), não de sinônimos inventados.
 
 **SOLID.** SRP já vale na separação de crates e no isolamento `sgml`/`xml` (ADR-02, revertida de AST neutro para dois parsers independentes — cada família de formato tem uma única razão pra mudar, não mistura tokenização com regra de negócio de outra família). OCP fica mais fraco depois dessa reversão: com dois parsers independentes, um front-end de formato novo (FDX futuro) não altera o parser existente, mas também não reusa o mapeamento — extensão sem modificação, só que com duplicação em vez de reuso; o trade-off explícito na ADR-02. **Não é LSP** o que explica o achado #7, ao reler com mais cuidado — LSP é sobre substituibilidade de subtipo dentro de uma hierarquia real (trait/interface compartilhada), e `runway`/`burn_rate` não estão nessa relação: são duas funções livres com assinatura diferente, sem trait comum que uma violaria ao ter forma distinta. O que de fato explica o achado #7 é mais simples e não precisa de nome de princípio SOLID: forçar uma forma de assinatura uniforme quando a semântica dos dados de entrada difere (dados brutos vs. resultado de outra métrica) é o tipo de generalização prematura que produz o próprio bug de modelagem — sem precisar emprestar vocabulário de LSP pra isso. ISP rege os Ports futuros da regra Hexagonal acima: traits pequenas e separadas, nunca uma `Environment` monolítica — a forma exata de cada port fica pra quando a capacidade for de fato necessária (a §5 não fixa nomes específicos além do padrão do que já existe). DIP é a mesma regra dita de outro ângulo: o core depende de abstrações, nunca o inverso — e `#[cfg(target_arch)]` no core é a violação mais provável de acontecer sem ninguém perceber.
 
@@ -191,7 +191,7 @@ Estruturas tipadas para conta (`AccountId`, tipo, instituição), transação (`
 
 Invariantes explícitas no construtor: transação exige `FITID` e `DTPOSTED`; posição exige `UNITPRICE` e `UNITS` coerentes com `INVPOS`. A ausência estrutural de subordinação hierárquica de cartões adicionais e de segregação PF/PJ (limite conhecido do OFX, item 06 do handoff) é modelada como lista plana de contas — não se inventa hierarquia que o protocolo não carrega. Em termos de DDD (§5, revisado): `Document` é candidato a Aggregate Root — vira isso de fato só se a Fase 0 desenhar o enforcement (acesso exclusivo pela raiz), não automaticamente pelo nome.
 
-**[Achado #10 fechado em código — revisado pelos achados #53/#65/#77]** Reimportação de extratos sobrepostos pode repetir `FITID`. `ofx-domain::dedupe` já implementa e testa `dedupe_by_fitid`, mas a semântica evoluiu em três pontos, tratados como pacote único de mudança no mesmo código já testado:
+**[Achado #10 fechado em código — revisado pelos achados #53/#65/#77]** Reimportação de extratos sobrepostos pode repetir `FITID`. `raptor-domain::dedupe` já implementa e testa `dedupe_by_fitid`, mas a semântica evoluiu em três pontos, tratados como pacote único de mudança no mesmo código já testado:
 
 - **Chave de deduplicação é `(AccountId, Fitid)`, nunca `Fitid` puro** (achado #65) — no spec OFX a unicidade de `FITID` tem escopo de conta emissora; entre contas distintas, `FITID` igual são transações distintas, jamais deduplicadas. `dedupe_by_fitid`/`consolidate_by_fitid` ganham extrator `account_of`. Casos gêmeos obrigatórios: mesmo `FITID` em contas distintas **deve** preservar ambas; mesmo `FITID` na mesma conta entre fontes **deve** deduplicar. Sem isto, o escopo consolidado da ADR-13 subconta o gasto silenciosamente com emissores de `FITID` sequencial curto.
 - **Avaliação de qualidade da chave antes de usá-la** (achado #77) — distribuição degenerada por fonte (cardinalidade muito menor que a contagem de transações, valores vazios ou constantes — "0" para tudo é defeito notório de emissor) gera `DiagnosticCode::FitidUnreliable` e fallback de chave por identidade (hash de data+valor+payee) ou dedupe desativado para aquela fonte, registrado na proveniência da consolidação. Sem isto, um extrato de emissor ruim colapsa para uma transação e o `integrity` reporta o desastre como "duplicatas removidas".
@@ -199,7 +199,7 @@ Invariantes explícitas no construtor: transação exige `FITID` e `DTPOSTED`; p
 
 O `Transaction` real desta ADR só precisa carregar `AccountId` e `Fitid` para os três utilitários funcionarem; nenhuma mudança de modelo necessária quando `Transaction` for escrito na Fase 0. Testes atualizados com os três pares de casos gêmeos (idêntico vs. divergente; preserva entre contas vs. deduplica na mesma conta; `FITID` constante → `FitidUnreliable` sem colapso).
 
-**Consolidação multi-fonte — fecha a metade mecânica da questão em aberto do §11.** Analytics de portfólio (`w_i`, Sharpe, VaR) e reimportação de contas/faturas diferentes exigem combinar N fontes numa única série antes de qualquer `Metric`. `ofx-domain::consolidation::consolidate_by_fitid` (implementado e testado) recebe `Vec<(SourceLabel, Vec<T>)>` mais extratores `fitid_of`, `date_of` e `account_of` (achado #65 — a chave de deduplicação é `(AccountId, Fitid)`, nunca `Fitid` puro; cada fonte passa por avaliação de qualidade da chave antes do dedupe, achado #77), e devolve uma série **ordenada cronologicamente** com duplicata de `FITID` removida entre fontes. Regra de precedência: em `FITID` repetido, vence a ocorrência de **data mais antiga** — é o registro original; a reimportação posterior é a cópia, descartada e reportada em `DuplicateFitid`. Empate de data desempata pela ordem de `sources` (estável), então passar a fonte mais confiável primeiro ainda importa nesse caso de borda. A saída sai ordenada por data crescente — série pronta para analytics de janela (TWR, MDD, σ dependem dessa ordem), sem o chamador reordenar. `ConsolidationOutcome::sources` alimenta `ExternalInput::ConsolidatedFrom` (achado #14) quando uma `Metric` de portfólio é calculada sobre o resultado — a proveniência registra de quais fontes os dados vieram. O `ConsolidationOutcome` é exatamente o objeto que a fronteira serializa como `Portfolio` na ADR-13 — mesma estrutura, dois nomes por camada (Rust/JS); o relatório de consolidação (`duplicates_removed`, `conflicts`, `sources`) viaja dentro dele, não numa função separada de consulta (achados #63/#49).
+**Consolidação multi-fonte — fecha a metade mecânica da questão em aberto do §11.** Analytics de portfólio (`w_i`, Sharpe, VaR) e reimportação de contas/faturas diferentes exigem combinar N fontes numa única série antes de qualquer `Metric`. `raptor-domain::consolidation::consolidate_by_fitid` (implementado e testado) recebe `Vec<(SourceLabel, Vec<T>)>` mais extratores `fitid_of`, `date_of` e `account_of` (achado #65 — a chave de deduplicação é `(AccountId, Fitid)`, nunca `Fitid` puro; cada fonte passa por avaliação de qualidade da chave antes do dedupe, achado #77), e devolve uma série **ordenada cronologicamente** com duplicata de `FITID` removida entre fontes. Regra de precedência: em `FITID` repetido, vence a ocorrência de **data mais antiga** — é o registro original; a reimportação posterior é a cópia, descartada e reportada em `DuplicateFitid`. Empate de data desempata pela ordem de `sources` (estável), então passar a fonte mais confiável primeiro ainda importa nesse caso de borda. A saída sai ordenada por data crescente — série pronta para analytics de janela (TWR, MDD, σ dependem dessa ordem), sem o chamador reordenar. `ConsolidationOutcome::sources` alimenta `ExternalInput::ConsolidatedFrom` (achado #14) quando uma `Metric` de portfólio é calculada sobre o resultado — a proveniência registra de quais fontes os dados vieram. O `ConsolidationOutcome` é exatamente o objeto que a fronteira serializa como `Portfolio` na ADR-13 — mesma estrutura, dois nomes por camada (Rust/JS); o relatório de consolidação (`duplicates_removed`, `conflicts`, `sources`) viaja dentro dele, não numa função separada de consulta (achados #63/#49).
 
 O que isto **não** decide, porque pertence a outra camada: como as fontes são lidas (é um Secondary Port de I/O local, §5 — Hexagonal, forma exata deliberadamente não fixada ainda). A política de acionamento (mecanismo na lib, chamada sempre explícita do consumidor, nunca automática) está fechada na ADR-13.
 
@@ -207,13 +207,13 @@ O que isto **não** decide, porque pertence a outra camada: como as fontes são 
 
 ### ADR-05 — Analytics como funções puras sobre o domínio
 
-**[Status: revisado — achado #7 fechado]** A premissa original era "toda métrica é `fn(&[T]) -> Metric<V>`, sem estado nem I/O". Isso vale para a família **primária** (`ledger`, `credit`, `anomaly`, `returns`, `risk`, `trend`), mas não para a família **derivada** — métricas que consomem o resultado de outra métrica em vez de dados brutos. `predictive::runway` (`ofx-domain`, já implementado e testado) é o primeiro caso: `fn(Money, &Metric<Money>) -> Metric<Decimal>`. As duas famílias coexistem deliberadamente; forçar Runway na assinatura primária era o próprio bug de modelagem — em termos de LSP (§5), seria forçar um subtipo num contrato que ele não satisfaz.
+**[Status: revisado — achado #7 fechado]** A premissa original era "toda métrica é `fn(&[T]) -> Metric<V>`, sem estado nem I/O". Isso vale para a família **primária** (`ledger`, `credit`, `anomaly`, `returns`, `risk`, `trend`), mas não para a família **derivada** — métricas que consomem o resultado de outra métrica em vez de dados brutos. `predictive::runway` (`raptor-domain`, já implementado e testado) é o primeiro caso: `fn(Money, &Metric<Money>) -> Metric<Decimal>`. As duas famílias coexistem deliberadamente; forçar Runway na assinatura primária era o próprio bug de modelagem — em termos de LSP (§5), seria forçar um subtipo num contrato que ele não satisfaz.
 
-O retorno não é o valor cru: é `Metric { value, provenance }`, onde `provenance` carrega janela temporal, contagem de inputs, faixa de datas e — desde o fechamento do achado #14 — os inputs externos usados (`ExternalInput`, já implementado em `ofx-domain::metric`). Pureza (na família primária) garante idempotência e testabilidade direta.
+O retorno não é o valor cru: é `Metric { value, provenance }`, onde `provenance` carrega janela temporal, contagem de inputs, faixa de datas e — desde o fechamento do achado #14 — os inputs externos usados (`ExternalInput`, já implementado em `raptor-domain::metric`). Pureza (na família primária) garante idempotência e testabilidade direta.
 
 **[A#22 da auditoria de solução, fechado como decisão — confirmado pelo autor: prioridade alta, drill-down até a transação]** *(Achado da auditoria de solução, não relacionado a nenhum achado #N desta ADR.)* Sem uma lista de quais transações compuseram um número, não existe drill-down possível em lugar nenhum da UI — e a confiança da persona leiga é binária: o primeiro número que ela achar "errado" (transferência mal-classificada, parcela mal interpretada) destrói a confiança em todos os outros, sem meio de investigar o porquê. Decisão: `Provenance` ganha um acessor opcional para a lista de `(AccountId, Fitid)` (chave do achado #65) das transações que entraram no cálculo — não como obrigação de toda métrica (uma agregação sobre milhares de transações não precisa listar todas), mas como capacidade que `ledger::total_spent`/`extremes`/`group_by_payee` — as métricas mais prováveis de gerar dúvida da persona leiga — devem expor. Prioridade alta, Milestone 4 do roadmap.
 
-Duas métricas concentram a complexidade algorítmica e recebem tratamento próprio: **IRR/XIRR** usa solver iterativo (Newton-Raphson com fallback para bissecção em bounds), retornando diagnostic de não-convergência em vez de `NaN`; **TWR** exige sub-períodos delimitados por fluxos de caixa externos — e desde o fechamento do achado #13, esses fluxos vêm pré-classificados por `ofx-domain::cashflow` (`CashflowKind::External` marca a quebra de sub-período), não inferidos ad-hoc dentro de `returns`. As demais são agregações ou estatísticas de janela deslizante diretas.
+Duas métricas concentram a complexidade algorítmica e recebem tratamento próprio: **IRR/XIRR** usa solver iterativo (Newton-Raphson com fallback para bissecção em bounds), retornando diagnostic de não-convergência em vez de `NaN`; **TWR** exige sub-períodos delimitados por fluxos de caixa externos — e desde o fechamento do achado #13, esses fluxos vêm pré-classificados por `raptor-domain::cashflow` (`CashflowKind::External` marca a quebra de sub-período), não inferidos ad-hoc dentro de `returns`. As demais são agregações ou estatísticas de janela deslizante diretas.
 
 **[Achado #16 fechado como decisão — corrigido; grade refinada pelo achado #67]** Frequência de reamostragem: a grade acompanha o fator de anualização, não o contrário. Série de investimento (`UNITPRICE`) é reamostrada para grade de **dias de pregão**, sem preencher fim de semana — coerente com o fator `√252` (dias úteis de mercado), convenção de trading que vale só para `risk`/`returns` sobre investimento (modo avançado, ADR-13). Série de gasto/saldo (`BALAMT`, o caminho principal da persona-alvo) é reamostrada para grade de **calendário** — todo dia, fim de semana incluso — coerente com o fator **`√365`**; reamostrar investimento pra grade de calendário e anualizar com `√252` deflaciona σ com dias de retorno zero, o erro simétrico ao que este achado já corrigiu no sentido inverso. Grade mensal é sempre derivada da grade base (diária de pregão ou de calendário), nunca calculada direto de pontos irregulares. Política de preenchimento explícita (forward-fill para saldo — saldo persiste entre lançamentos); contagem de pontos preenchidos entra na proveniência. Cada módulo registra o fator e a grade que de fato usa via `ExternalInput::Horizon` na proveniência — não existe uma constante global `√252` compartilhada entre os dois contextos. O span da EMA é parametrizado (nunca uma constante `α` fixa) e também entra na proveniência.
 
@@ -227,7 +227,7 @@ Mapa das 20 operações para os módulos — atualizado com o módulo `predictiv
 | `returns` | HPR, TWR, IRR/XIRR, CAGR, DY |
 | `risk` | σ (volatilidade), Sharpe, MDD, VaR, w_i (peso no portfólio) |
 | `trend` | SMA, EMA |
-| `predictive` | BR (Taxa de Queima), Runway (Pista de Sobrevivência) — família derivada; implementado hoje em `ofx-domain` (ver §4) |
+| `predictive` | BR (Taxa de Queima), Runway (Pista de Sobrevivência) — família derivada; implementado hoje em `raptor-domain` (ver §4) |
 | `integrity` | Relatório de saúde dos arquivos importados — não é métrica financeira, ver ADR-13 |
 
 **[Achado #69 fechado como decisão]** ADB e toda métrica sobre `BALAMT` operam sobre série de saldo **reconstruída** — OFX entrega snapshot(s) (`LEDGERBAL`@`DTASOF`) + transações, não série. Reconstrução: âncora no snapshot, rolando as transações; âncora, direção e span reconstruído entram na proveniência; segundo snapshot, quando presente, vira cross-check (alimenta a invariante do §8 e o `integrity`).
@@ -339,11 +339,11 @@ Mais `wasm-opt -Oz` no pós-build e medição contínua com `twiggy top`. Alloca
 
 **[Status: revisado — achados #4/#6/#17/#18/#19 fechados]** OFX legado é malformado por padrão (tags não fechadas, estruturas cíclicas — item 01 do handoff). Decisão: `parse` retorna `ParseOutcome { document, diagnostics: Vec<Diagnostic> }`. Erro em uma transação individual vira `Diagnostic` de severidade `Warning` e a transação é descartada ou marcada, sem abortar o documento. Só falhas fatais (header ilegível, ausência da tag `<OFX>`) retornam `Err`. Isso maximiza dado recuperável de arquivos reais e expõe a proveniência das perdas ao consumidor.
 
-**[Achado #17 fechado como decisão — ajustado pelo achado #48]** `Diagnostic` carrega um `DiagnosticCode` enum estável (não string livre), para o consumidor distinguir programaticamente as causas em vez de fazer string matching. Duas famílias, nomeadas explicitamente pra não ficarem misturadas por trás do mesmo enum: **achados que exigem atenção** — nada foi corrigido sozinho, o nome descreve o problema (`MissingRequiredField`, `UnknownTag` — extensão proprietária ignorada, `ArityMismatch` — tag SGML com aridade divergente da tabela, ADR-02, `CashflowClassificationAmbiguous` — propaga o `Confidence::Low` de `ofx-domain::cashflow`, já implementado; renomeado de `AmbiguousCashflowClassification` para bater a ordem `Substantivo+Particípio/Adjetivo` do resto da taxonomia, `FitidUnreliable` — qualidade degenerada da chave de dedupe por fonte, ver ADR-04, achado #77, `FitidConflicting` — payload divergente sob o mesmo `FITID`, ver ADR-04, achado #53); e **correções automáticas já aplicadas** — o parser ajustou e seguiu, só fica rastreável (`DecimalSeparatorNormalized`, `DateTimezoneNormalized`). O enum mora em `ofx-domain::diagnostic` e é versionado junto da API pública de `domain` (achado #48 — é o que permite `integrity` consumi-lo sem aresta `analytics → parse`); `ofx-parse` o reexporta e é o produtor primário. Novas variantes são aditivas, nunca renomeadas.
+**[Achado #17 fechado como decisão — ajustado pelo achado #48]** `Diagnostic` carrega um `DiagnosticCode` enum estável (não string livre), para o consumidor distinguir programaticamente as causas em vez de fazer string matching. Duas famílias, nomeadas explicitamente pra não ficarem misturadas por trás do mesmo enum: **achados que exigem atenção** — nada foi corrigido sozinho, o nome descreve o problema (`MissingRequiredField`, `UnknownTag` — extensão proprietária ignorada, `ArityMismatch` — tag SGML com aridade divergente da tabela, ADR-02, `CashflowClassificationAmbiguous` — propaga o `Confidence::Low` de `raptor-domain::cashflow`, já implementado; renomeado de `AmbiguousCashflowClassification` para bater a ordem `Substantivo+Particípio/Adjetivo` do resto da taxonomia, `FitidUnreliable` — qualidade degenerada da chave de dedupe por fonte, ver ADR-04, achado #77, `FitidConflicting` — payload divergente sob o mesmo `FITID`, ver ADR-04, achado #53); e **correções automáticas já aplicadas** — o parser ajustou e seguiu, só fica rastreável (`DecimalSeparatorNormalized`, `DateTimezoneNormalized`). O enum mora em `raptor-domain::diagnostic` e é versionado junto da API pública de `domain` (achado #48 — é o que permite `integrity` consumi-lo sem aresta `analytics → parse`); `raptor-parse` o reexporta e é o produtor primário. Novas variantes são aditivas, nunca renomeadas.
 
 **[Achado #18 fechado como decisão]** Emissores locais (inclusive brasileiros) produzem `<TRNAMT>-123,45` com vírgula, violando o spec. Normalização de separador decimal acontece no mapeamento de cada parser para `domain` (`sgml::to_document`/`xml::to_document`, ADR-02) — duplicada entre os dois desde a reversão pra parsers independentes, mesmo trade-off de duplicação já registrado ali. Antes de `Decimal::from_str`; quando aplicada, emite `DiagnosticCode::DecimalSeparatorNormalized` — a correção fica rastreável, não silenciosa.
 
-**[Achado #6 fechado como decisão]** `DTPOSTED` e demais datas OFX trazem offset de timezone embutido (ex.: `[-3:BRT]`). Toda data é normalizada para UTC no mapeamento de cada parser para `domain` — `ofx-domain` só aceita datas já normalizadas (é o parser que garante a invariante, o domínio não reprocessa offset); com dois parsers independentes, cada um implementa essa normalização, não um mapeador único. Quando o offset está ausente ou malformado, assume-se UTC e emite `DiagnosticCode::DateTimezoneNormalized` sinalizando a suposição.
+**[Achado #6 fechado como decisão]** `DTPOSTED` e demais datas OFX trazem offset de timezone embutido (ex.: `[-3:BRT]`). Toda data é normalizada para UTC no mapeamento de cada parser para `domain` — `raptor-domain` só aceita datas já normalizadas (é o parser que garante a invariante, o domínio não reprocessa offset); com dois parsers independentes, cada um implementa essa normalização, não um mapeador único. Quando o offset está ausente ou malformado, assume-se UTC e emite `DiagnosticCode::DateTimezoneNormalized` sinalizando a suposição.
 
 **[Achado #66 fechado como decisão — confirmado pelo autor: risco aceito, sem mudança de modelo]** A auditoria identificou que normalizar tudo para UTC tem um efeito colateral em UTC−3: lançamentos entre 21:00 e 23:59 no horário local mudam de dia — e, na virada do mês, de mês — ao converter. `ledger::period_series` agrupando pela data UTC pode atribuir uma compra ao mês seguinte ao da fatura real do banco, exatamente para a persona brasileira. A alternativa avaliada era `Transaction` carregar dois campos temporais (instante UTC para ordenação/janelas/dedupe, data local emitida para agrupamento contábil). **Decisão: manter um único campo de data em UTC**, sem o segundo campo — simplicidade de modelo prevalece sobre a correção desse caso de borda específico. O risco fica **documentado, não mitigado**: `period_series`/`getMonthlyEvolution` podem discordar da fatura impressa do banco em transações lançadas tarde da noite perto da virada do mês. Se o volume de reclamações ou o corpus de dialeto brasileiro (achado #4) mostrar que isso é frequente na prática, esta decisão é a primeira candidata a reabrir — a esta altura, sem dado real que justifique o custo de modelo antes da hora.
 
@@ -398,7 +398,7 @@ Decisão: mesmo filtro da ADR-10 — conjunto mínimo por fase, não cobertura m
 `./CLAUDE.md` na raiz (não `.claude/CLAUDE.md` — não há ainda outro motivo para existir `.claude/` no repo; migrar quando `rules/`/`skills/` abaixo entrarem, para manter a raiz limpa). Conteúdo mínimo — aponta para os documentos de decisão em vez de duplicá-los, mesmo critério de economia de tokens usado nas suas próprias skills:
 
 ```markdown
-# ofx (workspace Rust)
+# raptor (workspace Rust)
 
 Biblioteca multi-crate para parsing OFX (SGML 1.x + XML 2.x) com analytics
 financeiro e alvo WASM. Decisões completas: `discovery-ofx-rust-wasm.md`
@@ -502,9 +502,9 @@ Trade-off e escopo: esta ADR compromete o produto com a persona leiga de cartão
 sequenceDiagram
     participant U as Usuário
     participant JS as app.js
-    participant B as ofx-wasm
-    participant P as ofx-parse
-    participant A as ofx-analytics
+    participant B as raptor-wasm
+    participant P as raptor-parse
+    participant A as raptor-analytics
 
     U->>JS: seleciona arquivo .ofx
     JS->>JS: file.arrayBuffer() (local)
@@ -600,9 +600,9 @@ Sete cenários fim a fim que exercitam as decisões das seções anteriores na o
 sequenceDiagram
     participant U as Usuário leigo
     participant JS as app.js
-    participant W as ofx-wasm
-    participant P as ofx-parse
-    participant A as ofx-analytics
+    participant W as raptor-wasm
+    participant P as raptor-parse
+    participant A as raptor-analytics
 
     U->>JS: seleciona a fatura do cartão (.ofx)
     JS->>JS: file.arrayBuffer() — leitura local
@@ -635,8 +635,8 @@ sequenceDiagram
 sequenceDiagram
     participant U as Usuário leigo
     participant JS as app.js
-    participant W as ofx-wasm
-    participant A as ofx-analytics
+    participant W as raptor-wasm
+    participant A as raptor-analytics
 
     U->>JS: "quero entender melhor esse mês"
     JS->>W: getSpendingByPayee(doc)
@@ -672,8 +672,8 @@ sequenceDiagram
 sequenceDiagram
     participant U as Usuário com N cartões
     participant JS as app.js
-    participant W as ofx-wasm
-    participant D as ofx-domain
+    participant W as raptor-wasm
+    participant D as raptor-domain
 
     U->>JS: arrasta 3 arquivos (2 cartões + 1 reimportação sobreposta)
     JS->>W: loadFiles(files, {maxBytes})
@@ -724,8 +724,8 @@ flowchart TB
 sequenceDiagram
     participant U as Usuário avançado
     participant JS as app.js
-    participant W as ofx-wasm
-    participant A as ofx-analytics
+    participant W as raptor-wasm
+    participant A as raptor-analytics
 
     U->>JS: abre extrato de corretora (Investment Message Set)
     JS->>W: loadFile(bytes, {maxBytes})
@@ -751,7 +751,7 @@ sequenceDiagram
 sequenceDiagram
     participant U as Usuário
     participant JS as app.js
-    participant W as ofx-wasm
+    participant W as raptor-wasm
 
     U->>JS: importa 1 arquivo — banco exporta<br/>conta corrente + poupança no mesmo OFX
     JS->>W: loadFile(bytes, {maxBytes})
@@ -778,7 +778,7 @@ flowchart LR
         FILE2["Arquivo com header ilegível<br/>ou sem tag &lt;OFX&gt;"]
         JS["app.js define maxBytes"]
     end
-    subgraph wasm["ofx-wasm"]
+    subgraph wasm["raptor-wasm"]
         CHECK{"bytes.len() > max_bytes?"}
         ERR1["Err estruturado<br/>{code: InputTooLarge, message}"]
         PARSE["ofx_parse::parse(bytes)"]

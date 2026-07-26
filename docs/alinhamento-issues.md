@@ -305,16 +305,17 @@ M0 · `type:task` `area:domain` `priority:p1` `effort:s`
 estável), nunca `HashMap` serializado, para golden test byte a byte ser possível.
 
 **N11 · Registrar a decisão de nomenclatura `ofx` vs. `raptor`** — M0 · `type:spike`
-`area:repo` `priority:p2` `effort:xs` `needs:decision`
+`area:repo` `priority:p2` `effort:xs` — **fechada em 2026-07-26.**
 > A RA-32 fechou o A#32 com "nome `ofx` mantido — renomear é barato depois (`git mv`), cedo
 > demais pra mudar agora". Mas o repositório se chama `raptor` e os crates são `raptor-domain`,
-> `raptor-parse`, `raptor-analytics`, `raptor-wasm`: **o rename aconteceu depois da decisão, sem
-> registro em documento nenhum.** Os `docs/` seguem inteiros em `ofx-*`, então hoje decisão,
-> código e documentação discordam entre si.
+> `raptor-parse`, `raptor-analytics`, `raptor-wasm`: o rename tinha acontecido depois da decisão,
+> sem registro em documento nenhum.
 >
-> Critério de aceite: a decisão que superou a RA-32 fica registrada (no Discovery ou como nova RA);
-> só então os `docs/` são alinhados ao nome vigente. **Não é uma task de renomear** — é fechar a
-> discrepância antes de propagá-la.
+> **Decisão (supera a RA-32): o nome do projeto é `raptor`.** As autorreferências do projeto nos
+> documentos vivos (`discovery-ofx-rust-wasm.md`, `evolucao-ofx.md`, `handoff-ux-design-frontend.md`)
+> foram atualizadas de `ofx` para `raptor`, incluindo os nomes de crate no Discovery (33
+> ocorrências). Documentos históricos em `docs/auditoria/` não foram tocados — registram o que a
+> RA-32 decidiu naquele momento, não o estado atual.
 
 **N12 · Guia "como exportar OFX" por instituição** — M7 · `type:story` `area:web`
 `priority:p2` `effort:m`

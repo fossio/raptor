@@ -1,10 +1,10 @@
-# Handoff — ofx para UX, Design e Frontend
+# Handoff — raptor para UX, Design e Frontend
 
 | Campo | Valor |
 |---|---|
 | Fonte | Discovery/ADR completo (`discovery-ofx-rust-wasm.md`) — este documento traduz, não substitui |
 | Público | UX, Design de produto, Frontend |
-| Estado da biblioteca | Discovery fechado, zero decisões pendentes; código ainda não escrito além de `ofx-domain` |
+| Estado da biblioteca | Discovery fechado, zero decisões pendentes; código ainda não escrito além de `raptor-domain` |
 | Propósito | Dar contexto suficiente para desenhar jornadas, personas, telas, componentes, copy e acessibilidade sem precisar ler o Discovery técnico inteiro |
 
 ---
