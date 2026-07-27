@@ -1,18 +1,16 @@
-//! Raptor domain layer. Scaffold — os módulos reais (money, diagnostic,
-//! dedupe, consolidation, cashflow, predictive, metric) entram numa issue
-//! dedicada, seguindo `docs/discovery-ofx-rust-wasm.md`.
+//! `raptor-domain` — núcleo estável do workspace (ADR-01, ADR-04).
+//!
+//! Não depende de nenhuma outra crate do workspace. Os módulos abaixo
+//! fecharam os achados #1/#2/#7/#10/#13/#14/#15 (ver
+//! `docs/auditoria/fechamento-auditoria.md` e
+//! `docs/auditoria/alteracoes-adr.md`) antes de o modelo de domínio
+//! completo (`Document`/`Account`/`Transaction`, issue #40) existir — por
+//! isso operam sobre tipos independentes (`Money`, extratores genéricos)
+//! em vez do modelo de domínio inteiro.
 
-/// ```
-/// assert_eq!(raptor_domain::PLACEHOLDER, "raptor-domain");
-/// ```
-pub const PLACEHOLDER: &str = "raptor-domain";
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn placeholder_is_stable() {
-        assert_eq!(PLACEHOLDER, "raptor-domain");
-    }
-}
+pub mod cashflow;
+pub mod consolidation;
+pub mod dedupe;
+pub mod metric;
+pub mod money;
+pub mod predictive;
