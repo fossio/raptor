@@ -1,10 +1,10 @@
-# Handoff — ofx para UX, Design e Frontend
+# Handoff — raptor para UX, Design e Frontend
 
 | Campo | Valor |
 |---|---|
 | Fonte | Discovery/ADR completo (`discovery-ofx-rust-wasm.md`) — este documento traduz, não substitui |
 | Público | UX, Design de produto, Frontend |
-| Estado da biblioteca | Discovery fechado, zero decisões pendentes; código ainda não escrito além de `ofx-domain` |
+| Estado da biblioteca | Discovery fechado, zero decisões pendentes; código ainda não escrito além de `raptor-domain` |
 | Propósito | Dar contexto suficiente para desenhar jornadas, personas, telas, componentes, copy e acessibilidade sem precisar ler o Discovery técnico inteiro |
 
 ---
@@ -47,6 +47,7 @@ Estes vêm de decisões arquiteturais fechadas — o design precisa respeitá-lo
 - **Múltiplas moedas nunca são somadas.** Se o usuário importa um cartão em BRL e outro em USD, a consolidação mostra os dois totais separados, nunca um número só. O design precisa de um padrão visual para "isto é mais de uma moeda" que não pareça bug.
 - **Todo mês/gasto anômalo/erro tem uma explicação em português simples pronta.** O Discovery já escreveu vários exemplos de copy (ver §6) — são ponto de partida, não texto final, mas o tom (curto, sem jargão, sem culpar o usuário) é intencional.
 - **O modo avançado é uma reconfiguração completa da UI/UX, não um toggle raso.** Decisão fechada: ativar o modo avançado troca o esqueleto de navegação, vocabulário e telas disponíveis inteiro — como um "modo desenvolvedor" — nunca é a mesma tela da persona leiga com alguns campos extras aparecendo. As duas personas (leiga de cartão e investidor avançado) têm jornadas incompatíveis; misturar os dois vocabulários numa tela só é exatamente o que degrada as duas experiências. Isso é decisão de estrutura de navegação (quais telas existem em cada modo), não de visibilidade de campo — pensem nos dois modos como dois apps que compartilham o mesmo motor de dados, não como uma tela com um switch.
+- **Toda chamada à biblioteca é assíncrona, e nada roda na thread principal.** O motor (WASM) vive dentro de um Web Worker — decisão fechada, não negociável. Consequência prática pro frontend: toda função da API retorna `Promise`, sem exceção, inclusive as que "parecem" instantâneas. Consequência pro design: **todo número na tela tem um estado de carregamento**, mesmo que na maioria das vezes ele apareça rápido demais pra ser visto. Arquivos grandes ou consolidação de muitos meses podem levar segundos — a UI precisa continuar respondendo (scroll, navegação, cancelar) enquanto isso acontece. Não desenhem telas que assumem dado disponível na hora que a tela monta.
 - **Nenhuma telemetria de produto, em nenhuma forma, nem anônima.** Diferente do canal de reporte de arquivo problemático (que é opt-in e sobre a estrutura de um arquivo específico, nunca sobre uso), não existe contagem de uso, dashboard de features tocadas, ou qualquer "ping" de analytics de produto. Nenhuma tela deve incluir esse tipo de instrumentação, mesmo com o argumento de "é só anônimo".
 
 ---
@@ -60,8 +61,8 @@ Cada jornada abaixo corresponde a um cenário já mapeado tecnicamente no Discov
 A pessoa chega ao produto, arrasta ou seleciona o arquivo `.ofx` da fatura. Sem cadastro, sem espera longa. Resultado: total gasto no período, o fluxo líquido (o que inclui o pagamento da fatura — ver §7 sobre a diferença entre os dois números, que é sutil e fácil de confundir visualmente) e um indicador de saúde do arquivo. Este é o momento zero — a primeira impressão do produto inteiro se forma aqui, e ela precisa ser rápida e sem fricção.
 
 ### Jornada 2 — Aprofundando no mês
-**Disponível a partir do Milestone 4** (analytics de gasto da persona leiga) — é onde `group_by_payee`, `period_series`, `extremes`, `anomaly`, `credit::utilization` e `open_installments` existem de fato; não desenhar esta tela completa antes disso.
-Depois de ver o total, a pessoa quer detalhe: gasto por estabelecimento, evolução mês a mês, maior e menor lançamento, transações fora do padrão (anomalias), utilização do limite de crédito, e parcelas em aberto (quanto já pagou, quanto falta de cada compra parcelada). Esta é provavelmente a tela mais densa de informação do produto — cinco a seis blocos de dado diferentes sobre o mesmo arquivo. Vale pensar em hierarquia visual forte e progressive disclosure (não jogar tudo com o mesmo peso).
+**Tela completa disponível a partir do Milestone 4** (analytics de gasto da persona leiga) — é onde `group_by_payee`, `extremes`, `anomaly`, `credit::utilization`, `scheduled_payments` e o drill-down existem de fato; não desenhar esta tela completa antes disso. Exceção: `period_series` (evolução mês a mês) já existe desde o Milestone 3 (Jornada 3) — pode ser prototipado isoladamente antes do resto da tela, mesmo que a composição densa abaixo só feche no Milestone 4. (`open_installments`/parcelas em aberto saiu de escopo — achado #76 revertido, ver Discovery ADR-04.)
+Depois de ver o total, a pessoa quer detalhe: gasto por estabelecimento, evolução mês a mês, maior e menor lançamento, transações fora do padrão (anomalias), utilização do limite de crédito, parcelas em aberto (quanto já pagou, quanto falta de cada compra parcelada) e — quando o banco fornece o dado — contas agendadas para pagamento automático. Esta é provavelmente a tela mais densa de informação do produto — seis a oito blocos de dado diferentes sobre o mesmo arquivo. Vale pensar em hierarquia visual forte e progressive disclosure (não jogar tudo com o mesmo peso). **Cada número desta tela precisa ser clicável até os lançamentos que o compuseram** (drill-down, §5) — é a tela onde a confiança se ganha ou se perde.
 
 ### Jornada 3 — Múltiplos cartões
 **Disponível a partir do Milestone 3** (recorrência e consolidação) — é onde `consolidate_by_fitid` e a comparação por conta existem.
@@ -100,6 +101,8 @@ Estas são as unidades de informação que a biblioteca já sabe produzir. Cada 
 | Utilização do limite de crédito | só por cartão | Pode vir indisponível (arquivo não trouxe o limite) — tratar como estado "sem dado", nunca mostrar zero ou traço genérico |
 | Comparação entre cartões | consolidado | Lado a lado, particionado por moeda quando houver mais de uma |
 | Compras parceladas em andamento | ambos | Total, pago, restante — por compra |
+| Contas agendadas/recorrentes | ambos | **Condicional** — só existe se o banco preencher esse bloco no arquivo (nem todos preenchem). Precisa de estado "seu banco não fornece essa informação", distinto de "você não tem contas agendadas" |
+| Drill-down até a transação | ambos | **Não é uma tela própria, é um comportamento de toda tela numérica** — clicar em qualquer total, extremo ou grupo de estabelecimento navega até os lançamentos que o compuseram. É o que sustenta a confiança (§7); sem isso, o primeiro número que a pessoa achar errado derruba a confiança em todos os outros |
 | Saúde do arquivo importado | qualquer arquivo | Score de confiança + lista de achados em linguagem simples |
 | Retorno e risco (modo avançado) | por extrato de investimento | Sempre com os parâmetros usados visíveis |
 
@@ -171,8 +174,10 @@ Estas não são decisões técnicas — são decisões de produto/UX que o Disco
 | Escopo "produto" | Visão de um cartão/conta isolado |
 | Escopo "consolidado" | Visão de vários cartões/contas juntos |
 | `Diagnostic` | Qualquer aviso, correção ou erro que o sistema registrou ao ler o arquivo |
-| Proveniência | De onde um número veio — período, quantidade de transações, parâmetros usados |
-| Modo avançado | Métricas de investimento (retorno, risco) — não é o padrão |
+| Proveniência | De onde um número veio — período, quantidade de transações, parâmetros usados, e quais lançamentos o compuseram (é o que viabiliza o drill-down) |
+| Modo avançado | Métricas de investimento (retorno, risco) — não é o padrão; reconfigura a interface inteira, não é um switch de campos |
+| Web Worker | Onde o motor de cálculo roda — fora da thread principal, por isso toda chamada é assíncrona |
+| Message Set | Bloco do formato OFX por tipo de produto (conta, cartão, investimento, contas agendadas). Nem todo banco preenche todos — daí visões condicionais |
 
 ---
 
