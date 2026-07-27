@@ -47,11 +47,13 @@ R5/R7, com as afirmações fáticas realinhadas ao tracker real.
 persista dados" — e `#16` **é** esse consumidor. Manter o bloqueio é um ciclo: a issue espera uma
 decisão que só ela viabiliza.
 
-*Tensão que fica registrada, não resolvida aqui:* a RA-11/25 amarrou a condição de reabertura ao
-**Épico 5** ("quando a demo de referência de fato persistir algo entre sessões"), mas a `#16`
-está no M3 — o gatilho documentado na tabela de riscos do §9 do Discovery é antecipado em dois
-milestones. Ou a `#16` desce para o M5, ou o gatilho do §9 sobe para o M3. É decisão sua; o que
-não dá é as duas coisas seguirem escritas de formas diferentes.
+*Tensão resolvida em 2026-07-27:* a RA-11/25 tinha amarrado a condição de reabertura ao **Épico 5**
+("quando a demo de referência de fato persistir algo entre sessões"), mas a `#16` está no M3 — o
+gatilho documentado na tabela de riscos do §9 do Discovery estava dois milestones atrasado em
+relação a onde a decisão realmente ia acontecer. **Decisão do autor: o gatilho sobe para o M3**,
+não a `#16` desce para o M5 — descer `#16` desfaria a priorização da R2/R3/R5+R7, que promoveu
+persistência para o Épico 3 como o coração do valor recorrente do produto (resposta ao A#2).
+§9 do Discovery corrigido para apontar para `#16`/M3.
 
 ---
 
