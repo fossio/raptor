@@ -86,7 +86,7 @@ Título e labels abaixo refletem o estado real no GitHub em 2026-07-26. **Corpo 
 | [`#40`](../../../issues/40) | Modelo de domínio: `Document`/`Account`/`Transaction` + 5 Message Sets | `type:story` `area:domain` `p0` `effort:l` | **novo** |
 | [`#41`](../../../issues/41) | `domain::diagnostic` (achado #48) | `type:task` `area:domain` `p0` `effort:s` | **novo** |
 | [`#42`](../../../issues/42) | `Transaction` com dois campos temporais (achado #66) | `type:task` `area:domain` `p0` `effort:s` | **novo** |
-| [`#43`](../../../issues/43) | `Transaction.installment` + janela declarada (achados #76/#80) | `type:task` `area:domain` `p1` `effort:s` | **novo** |
+| [`#43`](../../../issues/43) | Janela declarada `DTSTART`/`DTEND` (achado #80) | `type:task` `area:domain` `p1` `effort:s` | **novo** — retitulada, `installment` removido (achado #76 revertido) |
 | [`#44`](../../../issues/44) | Determinismo de serialização (achado #82) | `type:task` `area:domain` `p1` `effort:xs` | **novo** |
 | [`#45`](../../../issues/45) | Registrar a decisão de nomenclatura `ofx` vs. `raptor` | `type:spike` `area:repo` `p2` `effort:xs` | **fechada** — decisão: `raptor` |
 | [`#46`](../../../issues/46) | `CLAUDE.md` inicial (ADR-11) | `type:task` `area:repo` `p1` `effort:s` | **novo** |
@@ -129,10 +129,10 @@ Título e labels abaixo refletem o estado real no GitHub em 2026-07-26. **Corpo 
 | # | Título | Labels | Origem |
 |---|---|---|---|
 | [`#17`](../../../issues/17) | `ledger` completo: NCF, ADB, AT, extremos, gasto por estabelecimento | `type:epic` `area:analytics` `p0` `effort:xl` | título + corpo — reconhece `#7` |
-| [`#18`](../../../issues/18) | `anomaly::z_score` sobre compras | `type:story` `area:analytics` `p1` `effort:m` | corpo — user story + critério |
+| [`#18`](../../../issues/18) | `anomaly::z_score` sobre compras | `type:story` `area:analytics` `p1` `effort:m` | corpo — user story + critério; achado #76 revertido, sem agregação de parcelas |
 | [`#19`](../../../issues/19) | `credit::utilization` com precondição de `CREDITLIMIT` | `type:story` `area:analytics` `p1` `effort:s` | — |
 | [`#20`](../../../issues/20) | `integrity::health_report` | `type:story` `area:analytics` `p0` `effort:l` | corpo — user story + critério |
-| [`#21`](../../../issues/21) | `ledger::open_installments` | `type:story` `area:analytics` `p1` `effort:m` | corpo — user story + critério |
+| ~~[`#21`](../../../issues/21)~~ | ~~`ledger::open_installments`~~ | — | **fechada (not_planned)** — achado #76 revertido, sem dado de parcela para agregar |
 | [`#22`](../../../issues/22) | Drill-down: quais transações compuseram este número (decidido — A#22) | `type:story` `area:domain` `area:analytics` `p0` `effort:m` | labels + corpo — `+area:domain`, coordenar com `#14` |
 | [`#23`](../../../issues/23) | Visão "Contas agendadas" (Bill Pay, decidido — A#5) | `type:story` `area:analytics` `p2` `effort:m` | — |
 | [`#24`](../../../issues/24) | Spike: Taxes Message Set populado por banco BR? | `type:spike` `area:parse` `p2` `effort:xs` `needs:research` | — |
@@ -177,7 +177,7 @@ Título e labels abaixo refletem o estado real no GitHub em 2026-07-26. **Corpo 
 | [`#59`](../../../issues/59) | Patrimônio em série temporal | H1.4 |
 | [`#60`](../../../issues/60) | Projeção de fluxo e de fatura | H2.1 |
 | [`#61`](../../../issues/61) | Orçamento como avaliação | H2.2 |
-| [`#62`](../../../issues/62) | CSV como formato de entrada | H3.2 — decisão em aberto (RA-31) |
+| [`#62`](../../../issues/62) | CSV como formato de entrada | H3.2 — **decidido não decidir agora** (2026-07-27): foco 100% OFX vale também para CSV |
 | [`#63`](../../../issues/63) | Anti-roadmap: registro das decisões "nunca" | §5 de `evolucao-ofx.md` |
 
 **Deliberadamente ausente:** métrica de sucesso do projeto (A#6) — a R6 fechou com "nenhuma ação agora"; abrir issue contradiria decisão fechada. Ver `docs/alinhamento-issues.md` §6.

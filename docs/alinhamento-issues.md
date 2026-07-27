@@ -142,7 +142,7 @@ Nada disso está no tracker, então cada pressão previsível será rediscutida 
 | 18 | `anomaly::z_score` | `#4.2` | 4 | **corpo** — user story + critério |
 | 19 | `credit::utilization` | `#4.3` | 4 | — |
 | 20 | `integrity::health_report` | `#4.4` | 4 | **corpo** — user story + critério |
-| 21 | `ledger::open_installments` | `#4.5` | 4 | **corpo** — user story + critério |
+| 21 | ~~`ledger::open_installments`~~ | `#4.5` | 4 | **corpo** — user story + critério; **fechada em 2026-07-27** (achado #76 revertido) |
 | 22 | Drill-down | `#4.6` | 4 | **labels + corpo** — `+area:domain`; coordenar com `#14` |
 | 23 | Contas agendadas (Bill Pay) | `#4.7` | 4 | — |
 | 24 | Spike Taxes Message Set | `#4.8` | 4 | — |
@@ -260,12 +260,15 @@ M0 · `type:story` `area:domain` `priority:p0` `effort:l`
 > Critério de aceite: os dois campos no tipo; cada função registra na proveniência qual usa;
 > offset ausente assume UTC e emite `DateTimezoneNormalized`.
 
-**N5 · `Transaction.installment` + janela declarada `DTSTART`/`DTEND` (achados #76/#80)** —
-M0 · `type:task` `area:domain` `priority:p1` `effort:s`
-> Campo opcional `installment: {n, of}` preenchido pelo mapeamento quando marcador de parcela é
-> reconhecido em `NAME`/`MEMO` (o texto cru permanece intacto), e a janela declarada da
-> transaction list como campo do modelo. Pré-requisito de `#18`, `#21` e da distinção "mês sem
+**N5 · Janela declarada `DTSTART`/`DTEND` (achado #80)** — M0 · `type:task` `area:domain`
+`priority:p1` `effort:s` — **retitulada em 2026-07-27.**
+> Janela declarada da transaction list como campo do modelo. Pré-requisito da distinção "mês sem
 > gasto" vs. "arquivo faltando" em `#20`.
+>
+> Título original cobria também o campo `installment: {n, of}` (achado #76), removido nesta
+> revisão — decisão do autor: sem heurística de reconhecimento de marcador de parcela em
+> `NAME`/`MEMO`, o modelo segue estritamente o spec OFX. Ver `#21` (fechada) e `#18` (corpo
+> atualizado) para o efeito em cascata; detalhe completo no Discovery, ADR-04.
 
 **N7 · `SECURITY.md`** — M1 · `type:task` `area:repo` `priority:p1` `effort:xs`
 > O achado `#73` moveu o artefato para quando o **primeiro** parser existe — a superfície de
@@ -405,7 +408,7 @@ promovidas:
 | N17 · Patrimônio em série temporal | H1.4 | Composição de peças já planejadas (`ledger` + Investments) |
 | N18 · Projeção de fluxo e de fatura | H2.1 | Parcelas futuras são o componente determinístico do forecast — vantagem estrutural no caso brasileiro |
 | N19 · Orçamento como avaliação | H2.2 | A biblioteca nunca guarda o orçamento, só o avalia |
-| N20 · CSV como formato de entrada | H3.2 | **Decisão explicitamente em aberto.** A RA-31 tirou o Open Finance do horizonte ativo, mas registrou que CSV "é uma pergunta distinta, não tocada por esta resposta — se o foco 100% OFX também vale pra CSV, é decisão própria, ainda em aberto" |
+| N20 · CSV como formato de entrada | H3.2 | **Decidido em 2026-07-27: não decidir agora.** A RA-31 tirou o Open Finance do horizonte ativo e deixou em aberto se "foco 100% OFX" também valia pra CSV — o autor confirmou que sim: ideia de horizonte, sem trabalho associado, reabrir só com sinal concreto de demanda |
 | N21 · Anti-roadmap: registro das decisões "nunca" | §5 | Ver abaixo |
 
 **N21** merece nota. É uma issue aberta e fixada (ou `type:decision`, se a premissa 1.1 for
