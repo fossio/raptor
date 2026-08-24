@@ -7,3 +7,7 @@ Decisões de arquitetura completas: [`docs/discovery-ofx-rust-wasm.md`](docs/dis
 Índice completo da documentação, incluindo o histórico de auditoria que as issues referenciam por número: [`docs/README.md`](docs/README.md).
 
 Licença: [MPL-2.0](LICENSE).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
